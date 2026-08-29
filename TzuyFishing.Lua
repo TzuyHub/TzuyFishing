@@ -1,4 +1,4 @@
--- Blox Fruits Hub - TzuyFishing (Không Đi Biển, Chạy Liên Tục Khi Bật)
+-- Blox Fruits Hub - TzuyFishing (Không tự xuống biển, chỉ câu tại chỗ)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -265,7 +265,7 @@ local function hasFishingRod()
     return false
 end
 
--- === CÂU CÁ LIÊN TỤC ===
+-- === CÂU CÁ LIÊN TỤC TẠI CHỖ ===
 local isFishing = false
 local castTime = 0
 
@@ -308,21 +308,20 @@ end
 -- === VÒNG LẶP CHÍNH LUÔN CHẠY KHI BẬT ===
 task.spawn(function()
     while true do
-        task.wait(0.1) -- Kiểm tra nhanh
+        task.wait(0.1)
         
         if not _GConfig.AutoFish and not _GConfig.CatchChest then
             isFishing = false
             continue
         end
         
-        -- Nếu bật AutoFish hoặc CatchChest thì đảm bảo có cần câu
+        -- Đảm bảo có cần câu khi bật bất kỳ tính năng nào
         if _GConfig.AutoFish or _GConfig.CatchChest then
             if not hasFishingRod() then
                 equipFishingRod()
             end
         end
         
-        -- Chỉ thực hiện câu cá khi bật AutoFish
         if _GConfig.AutoFish then
             local character = player.Character
             if not character or not character:FindFirstChild("HumanoidRootPart") then
@@ -334,7 +333,7 @@ task.spawn(function()
             if not isFishing then
                 castFishingRod()
                 local startTime = tick()
-                -- Chờ tối đa 3 giây (đủ nhanh)
+                -- Chờ tối đa 3 giây
                 while tick() - startTime < 3 do
                     task.wait(0.05)
                     -- Nếu bật CatchChest và phát hiện chest -> reel ngay
@@ -368,5 +367,5 @@ end)
 -- Thông báo khởi động
 task.spawn(function()
     task.wait(0.5)
-    showNotification("TzuyFishing Hub", "Hệ thống sẵn sàng! Bật Auto Fish để chạy liên tục.")
+    showNotification("TzuyFishing Hub", "Hệ thống sẵn sàng! Bật Auto Fish để câu tại chỗ.")
 end)
