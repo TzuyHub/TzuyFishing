@@ -1,46 +1,27 @@
--- Minimal Auto Fish Script (Tối giản hóa tối đa)
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+-- Script câu cá tối giản, không rườm rà
+local player = game.Players.LocalPlayer
+local running = true
 
-local autoFishRunning = false
-
--- Hàm bật/tắt tự động câu
-local function toggleAutoFish(state)
-    autoFishRunning = state
-    
-    if autoFishRunning then
-        task.spawn(function()
-            while autoFishRunning do
-                task.wait(1)
-                pcall(function()
-                    local character = player.Character
-                    if not character then return end
-                    
-                    local humanoid = character:FindFirstChildOfClass("Humanoid")
-                    local tool = character:FindFirstChildOfClass("Tool")
-                    
-                    -- Nếu chưa cầm cần câu thì tìm trong balo rồi lôi ra
-                    if not tool or not tool.Name:find("Fishing") then
-                        local backpack = player:FindFirstChildOfClass("Backpack")
-                        if backpack then
-                            for _, item in ipairs(backpack:GetChildren()) do
-                                if item.Name:find("Fishing") or item.Name:find("Rod") then
-                                    humanoid:EquipTool(item)
-                                    task.wait(0.3)
-                                    tool = item
-                                end
-                            end
-                        end
+task.spawn(function()
+    while running do
+        task.wait(1.5)
+        pcall(function()
+            local char = player.Character
+            if not char then return end
+            local tool = char:FindFirstChildOfClass("Tool")
+            
+            -- Tự động cầm cần nếu chưa cầm
+            if not tool or not tool.Name:lower():find("fish") then
+                local bp = player.Backpack
+                for _, item in ipairs(bp:GetChildren()) do
+                    if item.Name:lower():find("fish") or item.Name:lower():find("rod") then
+                        char.Humanoid:EquipTool(item)
                     end
-                    
-                    -- Nếu đang cầm thì ném cần
-                    if tool and tool.Name:find("Fishing") and tool:FindFirstChild("RemoteEvent") then
-                        tool.RemoteEvent:FireServer("Cast")
-                    end
-                end)
+                end
+            elseif tool and tool:FindFirstChild("RemoteEvent") then
+                -- Ném cần trực tiếp qua Remote, không rườm rà
+                tool.RemoteEvent:FireServer("Cast")
             end
         end)
     end
-end
-
--- Cách dùng: Gọi toggleAutoFish(true) để BẬT hoặc toggleAutoFish(false) để TẮT.
+end)
