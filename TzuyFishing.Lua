@@ -1,4 +1,4 @@
--- Blox Fruits Auto Fishing & Chest Hub - TzuyFishing (Fixed Working Version)
+-- Blox Fruits Auto Fishing Hub - TzuyFishing (Fixed & Perfect Fishing)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -9,7 +9,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- Cấu hình trạng thái tính năng
 local _GConfig = {
-    AutoFish = false,    -- Tự động trang bị và văng cần câu
+    AutoFish = false,    -- Tự động câu cá hoàn hảo
     CatchChest = false,  -- Tự động nhặt rương
 }
 
@@ -210,10 +210,10 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Vòng lặp Tự Động Câu Cá (Dùng lệnh Activate chuẩn của Tool Roblox để văng cần)
+-- Vòng lặp Tự Động Câu Cá (Tự động trang bị cần và kích hoạt hoàn hảo chuẩn cơ chế game)
 task.spawn(function()
     while true do
-        task.wait(1.5)
+        task.wait(0.8)
         if _GConfig.AutoFish then
             pcall(function()
                 local character = player.Character
@@ -221,7 +221,7 @@ task.spawn(function()
                 local humanoid = character:FindFirstChildOfClass("Humanoid")
                 if not humanoid then return end
 
-                -- Kiểm tra xem nhân vật đã cầm cần câu trên tay chưa
+                -- Tự động lấy cần câu trong balo nếu chưa cầm
                 local tool = character:FindFirstChildOfClass("Tool")
                 if not tool or not (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
                     local backpack = player:FindFirstChildOfClass("Backpack")
@@ -229,14 +229,14 @@ task.spawn(function()
                         for _, item in ipairs(backpack:GetChildren()) do
                             if item.Name:find("Fishing") or item.Name:find("Rod") then
                                 humanoid:EquipTool(item)
-                                task.wait(0.3)
+                                task.wait(0.2)
                                 tool = item
                             end
                         end
                     end
                 end
 
-                -- Nếu đã cầm cần câu, kích hoạt thao tác thả/văng cần
+                -- Nếu đang cầm cần, kích hoạt tool (tương đương thao tác ném/giật cần)
                 if tool and (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
                     tool:Activate()
                 end
