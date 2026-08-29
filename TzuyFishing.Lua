@@ -1,4 +1,4 @@
--- Blox Fruits Auto Fishing Hub - TzuyFishing (Clean Version)
+-- Blox Fruits Auto Fishing & Chest Hub - TzuyFishing
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -7,13 +7,13 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Cấu hình trạng thái
+-- Cấu hình trạng thái tính năng
 local _GConfig = {
-    AutoFish = false,    -- Tự động câu cá, tự động hoàn hảo và kéo cá lên
+    AutoFish = false,    -- Tự động trang bị và thực hiện câu cá
     CatchChest = false,  -- Tự động nhặt rương
 }
 
--- Xóa Menu cũ nếu có
+-- Xóa Menu cũ nếu có để tránh trùng lặp
 if playerGui:FindFirstChild("TzuyFishingGui") then
     playerGui.TzuyFishingGui:Destroy()
 end
@@ -101,8 +101,8 @@ local function createToggle(name, posY, callback)
     end)
 end
 
--- Tạo 2 nút tính năng chính
-createToggle("Tự Động Câu Cá (Hoàn Hảo & 1 Phát Lên)", 50, function(state)
+-- Tạo 2 nút tính năng chuẩn
+createToggle("Tự Động Câu Cá (Auto Fish)", 50, function(state)
     _GConfig.AutoFish = state
 end)
 
@@ -110,7 +110,7 @@ createToggle("Tự Động Nhặt Rương (Catch Chest)", 105, function(state)
     _GConfig.CatchChest = state
 end)
 
--- Nút nổi mở lại menu khi ấn ẩn
+-- Nút nổi mở lại menu khi ẩn
 local floatingToggleBtn = Instance.new("TextButton")
 floatingToggleBtn.Size = UDim2.new(0, 100, 0, 32)
 floatingToggleBtn.Position = UDim2.new(0, 15, 0, 15)
@@ -136,14 +136,13 @@ end
 minimizeBtn.MouseButton1Click:Connect(toggleMenuState)
 floatingToggleBtn.MouseButton1Click:Connect(toggleMenuState)
 
--- Vòng lặp xử lý chính (Nhặt rương và Tự động câu cá an toàn)
+-- Vòng lặp xử lý chính (Nhặt rương)
 RunService.Stepped:Connect(function()
     local character = player.Character
     if not character then return end
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return end
 
-    -- 1. Tính năng Tự động Nhặt Rương
     if _GConfig.CatchChest then
         pcall(function()
             for _, obj in ipairs(Workspace:GetChildren()) do
@@ -156,7 +155,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Vòng lặp Tự Động Câu Cá (Trang bị cần, thả cần và hoàn thành minigame trực tiếp không click chuột bừa)
+-- Vòng lặp Tự Động Câu Cá (Chỉ trang bị cần và thực hiện thao tác thả cần ổn định)
 task.spawn(function()
     while true do
         task.wait(0.5)
@@ -183,22 +182,10 @@ task.spawn(function()
                     end
                 end
 
-                -- Nếu đang cầm cần câu, kích hoạt tính năng câu cá
+                -- Nếu đang cầm cần câu, gửi lệnh ném cần
                 if tool and (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
                     if tool:FindFirstChild("RemoteEvent") then
                         tool.RemoteEvent:FireServer("Cast")
-                    end
-                end
-
-                -- Can thiệp trực tiếp vào dữ liệu giao diện câu cá (nếu có) để nhận cá ngay lập tức mà không cần ấn chuột
-                for _, gui in ipairs(playerGui:GetChildren()) do
-                    if gui:IsA("ScreenGui") and (gui.Name:find("Fish") or gui.Name:find("Mini") or gui.Name:find("UI") or gui.Name:find("Progress")) then
-                        for _, v in ipairs(gui:GetDescendants()) do
-                            -- Kéo thanh tiến trình đầy ngay lập tức để hoàn thành câu cá 1 phát ăn ngay
-                            if v:IsA("Frame") and (v.Name:find("Bar") or v.Name:find("Progress") or v.Name:find("Fill")) then
-                                v.Size = UDim2.new(1, 0, v.Size.Y.Scale, v.Size.Y.Offset)
-                            end
-                        end
                     end
                 end
             end)
