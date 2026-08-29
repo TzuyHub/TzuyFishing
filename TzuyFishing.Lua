@@ -1,22 +1,22 @@
--- Blox Fruits Auto Fishing & Chest Script Hub
+-- Blox Fruits Auto Fishing Hub - TzuyFishing
 -- Menu Name: TzuyFishing
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Cấu hình trạng thái tính năng
+-- Cấu hình trạng thái tính năng gộp
 local _GConfig = {
-    AutoFish = false,
-    PerfectCatch = false,
-    CatchChest = false,
+    AutoFish = false,    -- Tự động câu cá (Bao gồm: Lấy cần, thả cần, giật hoàn hảo và lên cá 1 phát)
+    CatchChest = false,  -- Tự động nhặt rương
 }
 
--- Xóa Menu cũ nếu có để tránh bị trùng lặp
+-- Xóa Menu cũ nếu có để tránh trùng lặp giao diện
 if playerGui:FindFirstChild("TzuyFishingGui") then
     playerGui.TzuyFishingGui:Destroy()
 end
@@ -30,8 +30,8 @@ screenGui.Parent = playerGui
 -- Tạo Frame chính của Menu
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 360, 0, 260)
-mainFrame.Position = UDim2.new(0.5, -180, 0.5, -130)
+mainFrame.Size = UDim2.new(0, 360, 0, 230)
+mainFrame.Position = UDim2.new(0.5, -180, 0.5, -115)
 mainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
@@ -72,15 +72,15 @@ local minCorner = Instance.new("UICorner")
 minCorner.CornerRadius = UDim.new(0, 6)
 minCorner.Parent = minimizeBtn
 
--- Hàm tạo Toggle Button
+-- Hàm tạo Toggle Button chuẩn
 local function createToggle(name, posY, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.92, 0, 0, 38)
+    btn.Size = UDim2.new(0.92, 0, 0, 40)
     btn.Position = UDim2.new(0.04, 0, 0, posY)
     btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     btn.Text = "  " .. name .. ": [OFF]"
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.TextSize = 12
+    btn.TextSize = 13
     btn.Font = Enum.Font.GothamSemibold
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.Parent = mainFrame
@@ -105,16 +105,12 @@ local function createToggle(name, posY, callback)
     end)
 end
 
--- Thêm các tính năng vào Menu
-createToggle("Tự Động Câu Cá (Auto Cast)", 50, function(state)
+-- 2 Tính năng chính gọn gàng
+createToggle("Tự Động Câu Cá (Hoàn Hảo & 1 Phát Lên)", 50, function(state)
     _GConfig.AutoFish = state
 end)
 
-createToggle("Câu Hoàn Hảo & Lên Cá 1 Phát", 98, function(state)
-    _GConfig.PerfectCatch = state
-end)
-
-createToggle("Tự Động Nhặt Rương (Catch Chest)", 146, function(state)
+createToggle("Tự Động Nhặt Rương (Catch Chest)", 105, function(state)
     _GConfig.CatchChest = state
 end)
 
@@ -151,14 +147,14 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Xử lý chức năng Tự động Nhặt Rương & Thả Cần an toàn
+-- Vòng lặp xử lý logic tự động nhặt rương
 RunService.Stepped:Connect(function()
     local character = player.Character
     if not character then return end
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return end
 
-    -- 1. Nhặt rương
+    -- Tự động nhặt rương
     if _GConfig.CatchChest then
         pcall(function()
             for _, obj in ipairs(Workspace:GetChildren()) do
@@ -169,44 +165,61 @@ RunService.Stepped:Connect(function()
             end
         end)
     end
+end)
 
-    -- 2. Tự động trang bị và thả cần câu
-    if _GConfig.AutoFish then
-        pcall(function()
-            local tool = character:FindFirstChildOfClass("Tool")
-            if not tool or not (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
-                local backpack = player:FindFirstChildOfClass("Backpack")
-                if backpack then
-                    for _, item in ipairs(backpack:GetChildren()) do
-                        if item.Name:find("Fishing") or item.Name:find("Rod") then
-                            humanoidRootPart.Parent.Humanoid:EquipTool(item)
+-- Hệ thống Tự Động Câu Cá Thông Minh (Trang bị, Thả cần, Giật hoàn hảo & 1 phát lên cá)
+task.spawn(function()
+    while true do
+        task.wait(0.3)
+        if _GConfig.AutoFish then
+            pcall(function()
+                local character = player.Character
+                if not character then return end
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                local hrp = character:FindFirstChild("HumanoidRootPart")
+                if not humanoid or not hrp then return end
+
+                -- 1. Tự động lấy cần câu ra nếu chưa cầm
+                local tool = character:FindFirstChildOfClass("Tool")
+                if not tool or not (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
+                    local backpack = player:FindFirstChildOfClass("Backpack")
+                    if backpack then
+                        for _, item in ipairs(backpack:GetChildren()) do
+                            if item.Name:find("Fishing") or item.Name:find("Rod") then
+                                humanoid:EquipTool(item)
+                                task.wait(0.2)
+                                tool = item
+                            end
                         end
                     end
                 end
-            end
-        end)
-    end
-end)
 
--- 3. Xử lý tối ưu riêng cho nút "Câu Hoàn Hảo" (Lắng nghe giao diện xuất hiện để tương tác)
-playerGui.ChildAdded:Connect(function(child)
-    if _GConfig.PerfectCatch and child:IsA("ScreenGui") then
-        task.spawn(function()
-            task.wait(0.1) -- Đợi giao diện load xong
-            pcall(function()
-                for _, v in ipairs(child:GetDescendants()) do
-                    if v:IsA("TextButton") or v:IsA("ImageButton") then
-                        -- Tự động bấm vào nút giật/hoàn thành mini-game
-                        if v.Name:find("Button") or v.Name:find("Reel") or v.Name:find("Catch") then
-                            -- Giả lập cú click chuột trực tiếp
-                            local vim = game:GetService("VirtualInputManager")
-                            vim:SendMouseButtonEvent(v.AbsolutePosition.X + 10, v.AbsolutePosition.Y + 10, 0, true, game, 1)
-                            task.wait(0.05)
-                            vim:SendMouseButtonEvent(v.AbsolutePosition.X + 10, v.AbsolutePosition.Y + 10, 0, false, game, 1)
+                -- 2. Nếu đã cầm cần, tiến hành kích hoạt ném cần hoặc tương tác câu
+                if tool and (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
+                    -- Gọi RemoteEvent thả cần nếu có
+                    if tool:FindFirstChild("RemoteEvent") then
+                        tool.RemoteEvent:FireServer("Cast")
+                    end
+
+                    -- 3. Tự động quét giao diện mini-game / bảng thông báo cá cắn câu để giật và kéo lên ngay lập tức
+                    for _, gui in ipairs(playerGui:GetChildren()) do
+                        if gui:IsA("ScreenGui") and (gui.Name:find("Fish") or gui.Name:find("Mini") or gui.Name:find("UI") or gui.Name:find("Progress")) then
+                            for _, v in ipairs(gui:GetDescendants()) do
+                                -- Tự động click hoàn hảo vào nút giật/kéo cá
+                                if v:IsA("TextButton") or v:IsA("ImageButton") then
+                                    VirtualInputManager:SendMouseButtonEvent(v.AbsolutePosition.X + 15, v.AbsolutePosition.Y + 15, 0, true, game, 1)
+                                    task.wait(0.05)
+                                    VirtualInputManager:SendMouseButtonEvent(v.AbsolutePosition.X + 15, v.AbsolutePosition.Y + 15, 0, false, game, 1)
+                                end
+                                -- Ép thanh tiến trình (Progress Bar) đầy 100% để hoàn thành nhận cá ngay lập tức
+                                if v:IsA("Frame") and (v.Name:find("Bar") or v.Name:find("Progress") or v.Name:find("Fill")) then
+                                    v.Size = UDim2.new(1, 0, v.Size.Y.Scale, v.Size.Y.Offset)
+                                end
+                            end
                         end
                     end
                 end
             end)
-        end)
+        end
     end
 end)
