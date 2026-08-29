@@ -16,17 +16,22 @@ local _GConfig = {
     CatchChest = false,      -- Tự động nhặt rương
 }
 
+-- Xóa Menu cũ nếu có để tránh bị trùng lặp giao diện
+if playerGui:FindFirstChild("TzuyFishingGui") then
+    playerGui.TzuyFishingGui:Destroy()
+end
+
 -- Tạo ScreenGui chính
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TzuyFishingGui"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
--- Tạo Frame chính của Menu
+-- Tạo Frame chính của Menu (Thu gọn lại kích thước chuẩn để không tràn màn hình điện thoại)
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 420, 0, 360)
-mainFrame.Position = UDim2.new(0.5, -210, 0.5, -180)
+mainFrame.Size = UDim2.new(0, 360, 0, 260)
+mainFrame.Position = UDim2.new(0.5, -180, 0.5, -130)
 mainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
@@ -39,11 +44,11 @@ corner.Parent = mainFrame
 
 -- Thanh tiêu đề
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, 0, 0, 45)
+titleLabel.Size = UDim2.new(1, 0, 0, 40)
 titleLabel.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
 titleLabel.Text = "  BLOX FRUITS - TzuyFishing"
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.TextSize = 14
+titleLabel.TextSize = 13
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = mainFrame
@@ -52,14 +57,14 @@ local titleCorner = Instance.new("UICorner")
 titleCorner.CornerRadius = UDim.new(0, 8)
 titleCorner.Parent = titleLabel
 
--- Nút Thu Nhỏ/Ẩn Menu
+-- Nút Thu Nhỏ/Ẩn Menu (-)
 local minimizeBtn = Instance.new("TextButton")
-minimizeBtn.Size = UDim2.new(0, 35, 0, 35)
-minimizeBtn.Position = UDim2.new(1, -40, 0, 5)
+minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+minimizeBtn.Position = UDim2.new(1, -35, 0, 5)
 minimizeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
 minimizeBtn.Text = "-"
 minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-minimizeBtn.TextSize = 18
+minimizeBtn.TextSize = 16
 minimizeBtn.Font = Enum.Font.GothamBold
 minimizeBtn.Parent = mainFrame
 
@@ -67,15 +72,15 @@ local minCorner = Instance.new("UICorner")
 minCorner.CornerRadius = UDim.new(0, 6)
 minCorner.Parent = minimizeBtn
 
--- Hàm tạo Toggle Button
+-- Hàm tạo Toggle Button cân đối, không bị tràn viền
 local function createToggle(name, posY, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 40)
-    btn.Position = UDim2.new(0.05, 0, 0, posY)
+    btn.Size = UDim2.new(0.92, 0, 0, 38)
+    btn.Position = UDim2.new(0.04, 0, 0, posY)
     btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     btn.Text = "  " .. name .. ": [OFF]"
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.TextSize = 13
+    btn.TextSize = 12
     btn.Font = Enum.Font.GothamSemibold
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.Parent = mainFrame
@@ -100,27 +105,27 @@ local function createToggle(name, posY, callback)
     end)
 end
 
--- Thêm các tính năng vào Menu (theo yêu cầu của bạn)
-createToggle("Tự Động Câu Cá (Auto Equip & Cast)", 60, function(state)
+-- Thêm các tính năng vào Menu với khoảng cách (posY) chuẩn xác
+createToggle("Tự Động Câu Cá (Auto Equip & Cast)", 50, function(state)
     _GConfig.AutoFish = state
 end)
 
-createToggle("Câu Hoàn Hảo & Lên Cá 1 Phát (Perfect Catch)", 110, function(state)
+createToggle("Câu Hoàn Hảo & Lên Cá 1 Phát", 98, function(state)
     _GConfig.PerfectCatch = state
 end)
 
-createToggle("Tự Động Nhặt Rương (Catch Chest)", 160, function(state)
+createToggle("Tự Động Nhặt Rương (Catch Chest)", 146, function(state)
     _GConfig.CatchChest = state
 end)
 
 -- Nút nổi Mở/Tắt Menu khi ẩn
 local floatingToggleBtn = Instance.new("TextButton")
-floatingToggleBtn.Size = UDim2.new(0, 110, 0, 35)
+floatingToggleBtn.Size = UDim2.new(0, 100, 0, 32)
 floatingToggleBtn.Position = UDim2.new(0, 15, 0, 15)
 floatingToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
 floatingToggleBtn.Text = "Mở/Tắt Menu"
 floatingToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-floatingToggleBtn.TextSize = 12
+floatingToggleBtn.TextSize = 11
 floatingToggleBtn.Font = Enum.Font.GothamBold
 floatingToggleBtn.Visible = false
 floatingToggleBtn.Parent = screenGui
@@ -165,12 +170,12 @@ RunService.Stepped:Connect(function()
         end)
     end
 
-    -- 2. Tự động câu cá, cắn câu giật lên 1 phát (Hoàn Hảo)
+    -- 2. Tự động câu cá & câu hoàn hảo
     if _GConfig.AutoFish or _GConfig.PerfectCatch then
         pcall(function()
             local tool = character:FindFirstChildOfClass("Tool")
             
-            -- Nếu chưa cầm cần câu, tự động tìm và trang bị
+            -- Nếu chưa cầm cần câu, tự động tìm và trang bị từ balo
             if not tool or not (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
                 local backpack = player:FindFirstChildOfClass("Backpack")
                 if backpack then
@@ -182,26 +187,21 @@ RunService.Stepped:Connect(function()
                 end
             end
 
-            -- Đã cầm cần câu: Tự động thả cần (Cast) nếu chưa thả
+            -- Đã cầm cần câu: Tự động thả cần
             if tool and (tool.Name:find("Fishing") or tool.Name:find("Rod")) and _GConfig.AutoFish then
-                -- Kiểm tra xem có đang không câu không (thường dựa vào animation hoặc state trên tool)
-                -- Nếu tool có remote event "Cast", gọi nó
                 if tool:FindFirstChild("RemoteEvent") then
                     tool.RemoteEvent:FireServer("Cast")
                 end
             end
 
-            -- Can thiệp vào mini-game để giật lên ngay lập tức 1 phát (Perfect Catch)
+            -- Can thiệp mini-game để giật cá hoàn hảo 1 phát ăn ngay
             if _GConfig.PerfectCatch then
                 for _, gui in ipairs(playerGui:GetChildren()) do
                     if gui:IsA("ScreenGui") and (gui.Name:find("Fish") or gui.Name:find("Mini") or gui.Name:find("UI") or gui.Name:find("Progress")) then
                         for _, v in ipairs(gui:GetDescendants()) do
-                            -- Click vào nút "Giật" hoặc "Nhận Cá" ngay lập tức
                             if v:IsA("TextButton") or v:IsA("ImageButton") or v.Name:find("Button") then
-                                -- Ép vị trí để giả lập tương tác trúng điểm hoàn hảo
-                                v.Position = UDim2.new(0.5, 0, 0.5, 0) -- Giả lập click vào trung tâm
+                                v.Position = UDim2.new(0.5, 0, 0.5, 0)
                             end
-                            -- Kéo thanh progress (thanh câu cá) lên max để hoàn thành
                             if v:IsA("Frame") and (v.Name:find("Bar") or v.Name:find("Progress") or v.Name:find("Fill")) then
                                 v.Size = UDim2.new(1, 0, v.Size.Y.Scale, v.Size.Y.Offset)
                             end
