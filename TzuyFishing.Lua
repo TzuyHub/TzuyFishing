@@ -1,9 +1,9 @@
--- Blox Fruits Auto Fishing & Chest Hub - TzuyFishing (Fixed & Notified)
+-- Blox Fruits Auto Fishing & Chest Hub - TzuyFishing (Top-Left Notification)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -14,28 +14,70 @@ local _GConfig = {
     CatchChest = false,  -- Tự động nhặt rương
 }
 
--- Hàm tạo thông báo nổi trong game (Notification)
-local function sendNotification(title, text, duration)
-    pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = title,
-            Text = text,
-            Duration = duration or 2,
-        })
-    end)
-end
-
 -- Xóa Menu cũ nếu có để tránh trùng lặp
 if playerGui:FindFirstChild("TzuyFishingGui") then
     playerGui.TzuyFishingGui:Destroy()
 end
 
--- Tạo giao diện Menu chính
+-- Tạo giao diện Menu chính & Khung thông báo
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TzuyFishingGui"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
+-- === HỆ THỐNG THÔNG BÁO GÓC TRÊN TRÁI ===
+local notifFrame = Instance.new("Frame")
+notifFrame.Name = "NotificationFrame"
+notifFrame.Size = UDim2.new(0, 260, 0, 50)
+notifFrame.Position = UDim2.new(0, -280, 0, 20) -- Ẩn sẵn bên trái màn hình
+notifFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
+notifFrame.BorderSizePixel = 0
+notifFrame.Parent = screenGui
+
+local notifCorner = Instance.new("UICorner")
+notifCorner.CornerRadius = UDim.new(0, 8)
+notifCorner.Parent = notifFrame
+
+local notifTitle = Instance.new("TextLabel")
+notifTitle.Size = UDim2.new(1, -15, 0, 20)
+notifTitle.Position = UDim2.new(0, 12, 0, 5)
+notifTitle.BackgroundTransparency = 1
+notifTitle.Text = "TzuyFishing Hub"
+notifTitle.TextColor3 = Color3.fromRGB(0, 200, 120)
+notifTitle.TextSize = 12
+notifTitle.Font = Enum.Font.GothamBold
+notifTitle.TextXAlignment = Enum.TextXAlignment.Left
+notifTitle.Parent = notifFrame
+
+local notifText = Instance.new("TextLabel")
+notifText.Size = UDim2.new(1, -15, 0, 20)
+notifText.Position = UDim2.new(0, 12, 0, 23)
+notifText.BackgroundTransparency = 1
+notifText.Text = "Đang khởi động..."
+notifText.TextColor3 = Color3.fromRGB(220, 220, 220)
+notifText.TextSize = 11
+notifText.Font = Enum.Font.Gotham
+notifText.TextXAlignment = Enum.TextXAlignment.Left
+notifText.Parent = notifFrame
+
+-- Hàm gọi thông báo xuất hiện ở góc trên bên trái
+local function showNotification(title, message)
+    notifTitle.Text = title
+    notifText.Text = message
+    
+    -- Hiệu ứng trượt vào từ góc trái (X: 20px)
+    local tweenIn = TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0, 20, 0, 20)})
+    tweenIn:Play()
+    
+    -- Sau 2.5 giây tự động trượt ẩn đi
+    task.spawn(function()
+        task.wait(2.5)
+        local tweenOut = TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(0, -280, 0, 20)})
+        tweenOut:Play()
+    end)
+end
+
+-- === MENU CHÍNH ===
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 360, 0, 230)
@@ -50,7 +92,7 @@ local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = mainFrame
 
--- Tiêu đề
+-- Tiêu đề Menu
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, 0, 0, 40)
 titleLabel.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
@@ -80,7 +122,7 @@ local minCorner = Instance.new("UICorner")
 minCorner.CornerRadius = UDim.new(0, 6)
 minCorner.Parent = minimizeBtn
 
--- Hàm tạo Toggle Button tích hợp thông báo
+-- Hàm tạo Toggle Button
 local function createToggle(name, posY, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.92, 0, 0, 40)
@@ -113,22 +155,22 @@ local function createToggle(name, posY, callback)
     end)
 end
 
--- Tạo 2 nút tính năng chuẩn
+-- Tạo 2 nút tính năng
 createToggle("Tự Động Câu Cá (Auto Fish)", 50, function(state)
     _GConfig.AutoFish = state
     if state then
-        sendNotification("TzuyFishing", "Đã Bật: Tự Động Câu Cá!", 2)
+        showNotification("Thông Báo", "Đã Bật: Tự Động Câu Cá!")
     else
-        sendNotification("TzuyFishing", "Đã Tắt: Tự Động Câu Cá!", 2)
+        showNotification("Thông Báo", "Đã Tắt: Tự Động Câu Cá!")
     end
 end)
 
 createToggle("Tự Động Nhặt Rương (Catch Chest)", 105, function(state)
     _GConfig.CatchChest = state
     if state then
-        sendNotification("TzuyFishing", "Đã Bật: Tự Động Nhặt Rương!", 2)
+        showNotification("Thông Báo", "Đã Bật: Tự Động Nhặt Rương!")
     else
-        sendNotification("TzuyFishing", "Đã Tắt: Tự Động Nhặt Rương!", 2)
+        showNotification("Thông Báo", "Đã Tắt: Tự Động Nhặt Rương!")
     end
 end)
 
@@ -158,7 +200,7 @@ end
 minimizeBtn.MouseButton1Click:Connect(toggleMenuState)
 floatingToggleBtn.MouseButton1Click:Connect(toggleMenuState)
 
--- Vòng lặp xử lý Nhặt Rương
+-- Vòng lặp Nhặt Rương
 RunService.Stepped:Connect(function()
     local character = player.Character
     if not character then return end
@@ -177,10 +219,10 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Vòng lặp Tự Động Câu Cá (Ổn định, tự cầm cần và ném cần đúng chức năng)
+-- Vòng lặp Tự Động Câu Cá
 task.spawn(function()
     while true do
-        task.wait(1) -- Thời gian chờ hợp lý giữa các lần ném cần để game không bị lag hoặc lỗi
+        task.wait(1)
         if _GConfig.AutoFish then
             pcall(function()
                 local character = player.Character
@@ -189,7 +231,6 @@ task.spawn(function()
                 local hrp = character:FindFirstChild("HumanoidRootPart")
                 if not humanoid or not hrp then return end
 
-                -- Tự động lấy cần câu trong balo nếu chưa cầm trên tay
                 local tool = character:FindFirstChildOfClass("Tool")
                 if not tool or not (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
                     local backpack = player:FindFirstChildOfClass("Backpack")
@@ -204,7 +245,6 @@ task.spawn(function()
                     end
                 end
 
-                -- Nếu đang cầm cần câu, gửi lệnh ném cần
                 if tool and (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
                     if tool:FindFirstChild("RemoteEvent") then
                         tool.RemoteEvent:FireServer("Cast")
@@ -215,5 +255,8 @@ task.spawn(function()
     end
 end)
 
--- Thông báo khi script load thành công
-sendNotification("TzuyFishing Hub", "Đã tải thành công! Nhấn vào nút để sử dụng.", 3)
+-- Thông báo khởi động thành công góc trên bên trái
+task.spawn(function()
+    task.wait(0.5)
+    showNotification("TzuyFishing Hub", "Đã tải thành công script!")
+end)
