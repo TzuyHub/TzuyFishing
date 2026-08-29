@@ -1,4 +1,4 @@
--- Blox Fruits Auto Fishing Hub - TzuyFishing (Fixed & Perfect Fishing)
+-- Blox Fruits Auto Fishing Hub - TzuyFishing (Fixed Video Logic)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -9,7 +9,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- Cấu hình trạng thái tính năng
 local _GConfig = {
-    AutoFish = false,    -- Tự động câu cá hoàn hảo
+    AutoFish = false,    -- Tự động câu cá hoàn hảo theo video
     CatchChest = false,  -- Tự động nhặt rương
 }
 
@@ -210,10 +210,10 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Vòng lặp Tự Động Câu Cá (Tự động trang bị cần và kích hoạt hoàn hảo chuẩn cơ chế game)
+-- Vòng lặp Tự Động Câu Cá chuẩn khớp trạng thái game
 task.spawn(function()
     while true do
-        task.wait(0.8)
+        task.wait(0.5)
         if _GConfig.AutoFish then
             pcall(function()
                 local character = player.Character
@@ -236,9 +236,25 @@ task.spawn(function()
                     end
                 end
 
-                -- Nếu đang cầm cần, kích hoạt tool (tương đương thao tác ném/giật cần)
+                -- Nếu đang cầm cần, kích hoạt liên tục để thực hiện quăng và giật cá hoàn hảo
                 if tool and (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
                     tool:Activate()
+                    -- Kiểm tra và tương tác trực tiếp với các sự kiện hoặc minigame UI nếu có trên màn hình
+                    for _, gui in ipairs(playerGui:GetChildren()) do
+                        if gui:IsA("ScreenGui") then
+                            for _, desc in ipairs(gui:GetDescendants()) do
+                                if desc:IsA("TextButton") and (desc.Text:lower():find("reel") or desc.Text:lower():find("catch") or desc.Text:lower():find("fish")) then
+                                    local vim = game:GetService("VirtualInputManager")
+                                    -- Kích hoạt giả lập nhấn cực kỳ nhẹ vào nút trong game để qua minigame hoàn hảo
+                                    if vim then
+                                        vim:SendMouseButtonEvent(desc.AbsolutePosition.X + 10, desc.AbsolutePosition.Y + 10, 0, true, game, 0)
+                                        task.wait(0.05)
+                                        vim:SendMouseButtonEvent(desc.AbsolutePosition.X + 10, desc.AbsolutePosition.Y + 10, 0, false, game, 0)
+                                    end
+                                end
+                            end
+                        end
+                    end
                 end
             end)
         end
