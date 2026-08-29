@@ -1,17 +1,50 @@
--- Blox Fruits Auto Fishing & Priority Chest Hub - TzuyFishing
+-- Blox Fruits Priority Chest Hub - TzuyFishing (Safe Clean Config)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Cấu hình trạng thái tính năng
+-- Tên file config riêng biệt và an toàn
+local CONFIG_FILE = "TzuyFishing_ChestConfig.json"
+
+-- Chỉ lưu duy nhất cấu hình Nhặt Rương (CatchChest)
 local _GConfig = {
-    AutoFish = false,    -- Tự động câu cá
-    CatchChest = false,  -- Ưu tiên tự động nhặt rương khi thấy
+    CatchChest = false,
 }
+
+-- Hàm chỉ đọc và khôi phục trạng thái CatchChest đã lưu
+local function loadConfig()
+    if writefile and readfile and isfile and isfile(CONFIG_FILE) then
+        local success, data = pcall(function()
+            return HttpService:JSONDecode(readfile(CONFIG_FILE))
+        end)
+        if success and type(data) == "table" then
+            if data.CatchChest ~= nil then
+                _GConfig.CatchChest = data.CatchChest
+            end
+        end
+    end
+end
+
+-- Hàm chỉ ghi/lưu trạng thái CatchChest hiện tại ra file
+local function saveConfig()
+    if writefile then
+        pcall(function-- Chỉ lưu đúng biến CatchChest vào file JSON
+            local cleanData = {
+                CatchChest = _GConfig.CatchChest
+            }
+            local encoded = HttpService:JSONEncode(cleanData)
+            writefile(CONFIG_FILE, encoded)
+        end)
+    end
+end
+
+-- Load cài đặt sạch sẽ ngay khi khởi động
+loadConfig()
 
 -- Xóa Menu cũ nếu có để tránh trùng lặp
 if playerGui:FindFirstChild("TzuyFishingGui") then
@@ -76,8 +109,8 @@ end
 -- === MENU CHÍNH ===
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 360, 0, 230)
-mainFrame.Position = UDim2.new(0.5, -180, 0.5, -115)
+mainFrame.Size = UDim2.new(0, 360, 0, 180)
+mainFrame.Position = UDim2.new(0.5, -180, 0.5, -90)
 mainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
@@ -116,56 +149,46 @@ local minCorner = Instance.new("UICorner")
 minCorner.CornerRadius = UDim.new(0, 6)
 minCorner.Parent = minimizeBtn
 
-local function createToggle(name, posY, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.92, 0, 0, 40)
-    btn.Position = UDim2.new(0.04, 0, 0, posY)
-    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    btn.Text = "  " .. name .. ": [OFF]"
-    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.TextSize = 12
-    btn.Font = Enum.Font.GothamSemibold
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.Parent = mainFrame
+-- Tạo nút tính năng Nhặt Rương duy nhất
+local btn = Instance.new("TextButton")
+btn.Size = UDim2.new(0.92, 0, 0, 40)
+btn.Position = UDim2.new(0.04, 0, 0, 65)
+btn.Parent = mainFrame
 
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = btn
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 6)
+btnCorner.Parent = btn
 
-    local enabled = false
-    btn.MouseButton1Click:Connect(function()
-        enabled = not enabled
-        if enabled then
-            btn.BackgroundColor3 = Color3.fromRGB(0, 160, 90)
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            btn.Text = "  " .. name .. ": [ON]"
-        else
-            btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-            btn.Text = "  " .. name .. ": [OFF]"
-        end
-        callback(enabled)
-    end)
+-- Hàm cập nhật giao diện nút
+local function updateButtonVisual(state)
+    if state then
+        btn.BackgroundColor3 = Color3.fromRGB(0, 160, 90)
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.Text = "  Tự Động Nhặt Rương (Catch Chest): [ON]"
+    else
+        btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        btn.Text = "  Tự Động Nhặt Rương (Catch Chest): [OFF]"
+    end
 end
 
-createToggle("Tự Động Câu Cá (Auto Fish)", 50, function(state)
-    _GConfig.AutoFish = state
-    if state then
-        showNotification("Thông Báo", "Đã Bật: Tự Động Câu Cá!")
+-- Đồng bộ trạng thái đã lưu vào giao diện ban đầu
+updateButtonVisual(_GConfig.CatchChest)
+
+-- Khi click thay đổi trạng thái, tự động lưu riêng file CatchChest
+btn.MouseButton1Click:Connect(function()
+    _GConfig.CatchChest = not _GConfig.CatchChest
+    updateButtonVisual(_GConfig.CatchChest)
+    saveConfig()
+    
+    if _GConfig.CatchChest then
+        showNotification("Thông Báo", "Đã Bật & Lưu Cài Đặt Rương!")
     else
-        showNotification("Thông Báo", "Đã Tắt: Tự Động Câu Cá!")
+        showNotification("Thông Báo", "Đã Tắt & Lưu Cài Đặt Rương!")
     end
 end)
 
-createToggle("Tự Động Nhặt Rương (Catch Chest)", 105, function(state)
-    _GConfig.CatchChest = state
-    if state then
-        showNotification("Thông Báo", "Đã Bật: Tự Động Nhặt Rương!")
-    else
-        showNotification("Thông Báo", "Đã Tắt: Tự Động Nhặt Rương!")
-    end
-end)
-
+-- Nút nổi mở lại menu khi ẩn
 local floatingToggleBtn = Instance.new("TextButton")
 floatingToggleBtn.Size = UDim2.new(0, 100, 0, 32)
 floatingToggleBtn.Position = UDim2.new(0, 15, 0, 15)
@@ -191,77 +214,26 @@ end
 minimizeBtn.MouseButton1Click:Connect(toggleMenuState)
 floatingToggleBtn.MouseButton1Click:Connect(toggleMenuState)
 
--- Hàm kiểm tra xem có rương xung quanh hay không
-local function getNearestChest(hrp)
-    for _, obj in ipairs(Workspace:GetChildren()) do
-        if obj.Name:find("Chest") and obj:FindFirstChild("HumanoidRootPart") then
-            return obj.HumanoidRootPart
-        end
-    end
-    return nil
-end
-
--- Vòng lặp chính xử lý Nhặt Rương Ưu Tiên
+-- Vòng lặp xử lý Nhặt Rương (1 phát lấy được)
 RunService.Stepped:Connect(function()
+    if not _GConfig.CatchChest then return end
+    
     local character = player.Character
     if not character then return end
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return end
 
-    if _GConfig.CatchChest then
-        pcall(function()
-            for _, obj in ipairs(Workspace:GetChildren()) do
-                if obj.Name:find("Chest") and obj:FindFirstChild("HumanoidRootPart") then
-                    firetouchinterest(humanoidRootPart, obj.HumanoidRootPart, 0)
-                    firetouchinterest(humanoidRootPart, obj.HumanoidRootPart, 1)
-                end
+    pcall(function()
+        for _, obj in ipairs(Workspace:GetChildren()) do
+            if obj.Name:find("Chest") and obj:FindFirstChild("HumanoidRootPart") then
+                firetouchinterest(humanoidRootPart, obj.HumanoidRootPart, 0)
+                firetouchinterest(humanoidRootPart, obj.HumanoidRootPart, 1)
             end
-        end)
-    end
-end)
-
--- Vòng lặp Câu Cá (Sẽ tự nhường chỗ / hoãn lại 1 nhịp nếu phát hiện có rương xuất hiện để hốt rương trước)
-task.spawn(function()
-    while true do
-        task.wait(1)
-        if _GConfig.AutoFish then
-            pcall(function()
-                local character = player.Character
-                if not character then return end
-                local hrp = character:FindFirstChild("HumanoidRootPart")
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                if not hrp or not humanoid then return end
-
-                -- Nếu đang bật nhặt rương VÀ phát hiện có rương ở gần, tạm dừng câu để hốt rương trước
-                if _GConfig.CatchChest and getNearestChest(hrp) then
-                    return -- Nhường chỗ cho vòng lặp nhặt rương xử lý xong xuôi rồi mới câu tiếp
-                end
-
-                -- Tự động lấy cần câu trong balo nếu chưa cầm
-                local tool = character:FindFirstChildOfClass("Tool")
-                if not tool or not (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
-                    local backpack = player:FindFirstChildOfClass("Backpack")
-                    if backpack then
-                        for _, item in ipairs(backpack:GetChildren()) do
-                            if item.Name:find("Fishing") or item.Name:find("Rod") then
-                                humanoid:EquipTool(item)
-                                task.wait(0.2)
-                                tool = item
-                            end
-                        end
-                    end
-                end
-
-                -- Nếu đang cầm cần thì kích hoạt thao tác câu bình thường
-                if tool and (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
-                    tool:Activate()
-                end
-            end)
         end
-    end
+    end)
 end)
 
 task.spawn(function()
     task.wait(0.5)
-    showNotification("TzuyFishing Hub", "Đã tải thành công script!")
+    showNotification("TzuyFishing Hub", "Tải cấu hình rương thành công!")
 end)
