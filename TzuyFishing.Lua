@@ -1,320 +1,210 @@
 --[[
-    Script: longhihiv2 - Auto Fish & Auto Chest for Blox Fruits
-    Hỗ trợ: Synapse X, KRNL, Fluxus, ...
-    Chức năng:
-    - Tự động giật cần khi cá cắn và bắt cá ngay lập tức (bỏ qua minigame)
-    - Tự động bắt rương khi câu được
-    - Giao diện menu hiện đại, kéo thả, thu gọn
-]]
+    Script tự động câu cá Blox Fruits
+    Yêu cầu: Executor hỗ trợ VirtualInputManager, GetMouse, RemoteSpy (nếu cần debug)
+    ID menu: 14920583102
+--]]
 
--- ==================== CẤU HÌNH ====================
-local SETTINGS = {
-    autoFish = false,        -- Tự động bắt cá
-    autoChest = false,       -- Tự động bắt rương
-    scanDelay = 0.2,         -- Độ trễ quét remote (giây)
-    fishRemoteKeywords = {"bite", "reel", "catch", "fish", "hook", "minigame", "result"},
-    chestRemoteKeywords = {"chest", "openchest", "getchest"}
-}
--- ==================================================
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local VIM = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
 
-local player = game.Players.LocalPlayer
-local replicatedStorage = game:GetService("ReplicatedStorage")
-local runService = game:GetService("RunService")
-local userInputService = game:GetService("UserInputService")
+-- Biến toàn cục
+local autoFishEnabled = false
+local autoChestEnabled = true
+local fishingRod = nil
+local biteSignal = nil
 
--- ==================== TẠO MENU GUI ====================
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "longhihiv2"
-screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.Parent = player:WaitForChild("PlayerGui")
-
--- Main Frame
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 220, 0, 140)
-mainFrame.Position = UDim2.new(0.5, -110, 0.5, -70)
-mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-mainFrame.BorderSizePixel = 0
-mainFrame.ClipsDescendants = true
-mainFrame.Parent = screenGui
-
--- Tiêu đề
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 30)
-titleBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-titleBar.BorderSizePixel = 0
-titleBar.Parent = mainFrame
-
-local titleText = Instance.new("TextLabel")
-titleText.Size = UDim2.new(1, -50, 1, 0)
-titleText.Position = UDim2.new(0, 10, 0, 0)
-titleText.BackgroundTransparency = 1
-titleText.Text = "longhihiv2"
-titleText.TextColor3 = Color3.new(1, 1, 1)
-titleText.Font = Enum.Font.SourceSansBold
-titleText.TextSize = 18
-titleText.TextXAlignment = Enum.TextXAlignment.Left
-titleText.Parent = titleBar
-
--- Nút thu gọn
-local minimizeButton = Instance.new("TextButton")
-minimizeButton.Size = UDim2.new(0, 30, 0, 30)
-minimizeButton.Position = UDim2.new(1, -30, 0, 0)
-minimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-minimizeButton.BorderSizePixel = 0
-minimizeButton.Text = "—"
-minimizeButton.TextColor3 = Color3.new(1, 1, 1)
-minimizeButton.Font = Enum.Font.SourceSansBold
-minimizeButton.TextSize = 20
-minimizeButton.Parent = titleBar
-
--- Nút đóng
-local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0, 30, 0, 30)
-closeButton.Position = UDim2.new(1, -60, 0, 0)
-closeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-closeButton.BorderSizePixel = 0
-closeButton.Text = "X"
-closeButton.TextColor3 = Color3.new(1, 1, 1)
-closeButton.Font = Enum.Font.SourceSansBold
-closeButton.TextSize = 18
-closeButton.Parent = titleBar
-
--- Nút Auto Fish
-local autoFishButton = Instance.new("TextButton")
-autoFishButton.Name = "AutoFishButton"
-autoFishButton.Size = UDim2.new(1, -20, 0, 30)
-autoFishButton.Position = UDim2.new(0, 10, 0, 40)
-autoFishButton.BackgroundColor3 = Color3.fromRGB(120, 30, 30)
-autoFishButton.BorderSizePixel = 0
-autoFishButton.Text = "Auto Fish: OFF"
-autoFishButton.TextColor3 = Color3.new(1, 1, 1)
-autoFishButton.Font = Enum.Font.SourceSans
-autoFishButton.TextSize = 14
-autoFishButton.AutoButtonColor = false
-autoFishButton.Parent = mainFrame
-
--- Nút Auto Chest
-local autoChestButton = Instance.new("TextButton")
-autoChestButton.Name = "AutoChestButton"
-autoChestButton.Size = UDim2.new(1, -20, 0, 30)
-autoChestButton.Position = UDim2.new(0, 10, 0, 80)
-autoChestButton.BackgroundColor3 = Color3.fromRGB(120, 30, 30)
-autoChestButton.BorderSizePixel = 0
-autoChestButton.Text = "Auto Catch Chest: OFF"
-autoChestButton.TextColor3 = Color3.new(1, 1, 1)
-autoChestButton.Font = Enum.Font.SourceSans
-autoChestButton.TextSize = 14
-autoChestButton.AutoButtonColor = false
-autoChestButton.Parent = mainFrame
-
--- Nút trạng thái (debug)
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -20, 0, 20)
-statusLabel.Position = UDim2.new(0, 10, 0, 115)
-statusLabel.BackgroundTransparency = 1
-statusLabel.Text = "Trạng thái: Đang chờ..."
-statusLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-statusLabel.Font = Enum.Font.SourceSans
-statusLabel.TextSize = 12
-statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-statusLabel.Parent = mainFrame
-
--- ==================== CHỨC NĂNG KÉO THẢ ====================
-local dragging = false
-local dragStartPos = nil
-local frameStartPos = nil
-
-titleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStartPos = input.Position
-        frameStartPos = mainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-userInputService.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStartPos
-        mainFrame.Position = UDim2.new(frameStartPos.X.Scale, frameStartPos.X.Offset + delta.X, frameStartPos.Y.Scale, frameStartPos.Y.Offset + delta.Y)
-    end
-end)
-
--- Thu gọn / Mở rộng
-local minimized = false
-minimizeButton.MouseButton1Click:Connect(function()
-    minimized = not minimized
-    mainFrame.Size = minimized and UDim2.new(0, 220, 0, 30) or UDim2.new(0, 220, 0, 140)
-    minimizeButton.Text = minimized and "+" or "—"
-end)
-
--- Đóng menu
-closeButton.MouseButton1Click:Connect(function()
-    screenGui:Destroy()
-end)
-
--- ==================== QUẢN LÝ REMOTE ====================
-local allRemotes = {}
-local function scanRemotes()
-    allRemotes = {}
-    for _, obj in ipairs(replicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-            table.insert(allRemotes, obj)
-        end
-    end
+-- Hàm mô phỏng click chuột trái
+local function simulateClick()
+    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+    wait(0.05)
+    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
 end
 
--- Tìm remote theo danh sách từ khóa
-local function findRemoteByKeywords(keywords)
-    for _, remote in ipairs(allRemotes) do
-        local name = remote.Name:lower()
-        for _, kw in ipairs(keywords) do
-            if name:find(kw:lower()) then
-                return remote
+-- Hàm tìm cần câu trong người
+local function findFishingRod()
+    fishingRod = nil
+    -- Tìm trong Backpack
+    for _, item in ipairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") and (item.Name:lower():find("rod") or item.Name:lower():find("fishing")) then
+            fishingRod = item
+            return item
+        end
+    end
+    -- Tìm trong Character (đang cầm)
+    if LocalPlayer.Character then
+        for _, item in ipairs(LocalPlayer.Character:GetChildren()) do
+            if item:IsA("Tool") and (item.Name:lower():find("rod") or item.Name:lower():find("fishing")) then
+                fishingRod = item
+                return item
             end
         end
     end
     return nil
 end
 
--- Khởi tạo remote
-scanRemotes()
-local fishRemote = findRemoteByKeywords(SETTINGS.fishRemoteKeywords)
-local chestRemote = findRemoteByKeywords(SETTINGS.chestRemoteKeywords)
+-- Hàm kết nối tín hiệu cá cắn
+local function connectToBiteSignal()
+    local rod = findFishingRod()
+    if not rod then return nil end
 
--- Nếu không tìm thấy, quét lại sau mỗi vài giây
-spawn(function()
-    while wait(5) do
-        if not fishRemote or not chestRemote then
-            scanRemotes()
-            fishRemote = fishRemote or findRemoteByKeywords(SETTINGS.fishRemoteKeywords)
-            chestRemote = chestRemote or findRemoteByKeywords(SETTINGS.chestRemoteKeywords)
-            if fishRemote then statusLabel.Text = "Đã tìm thấy fish remote: " .. fishRemote.Name end
-            if chestRemote then statusLabel.Text = "Đã tìm thấy chest remote: " .. chestRemote.Name end
+    -- Tìm RemoteEvent / BindableEvent bên trong tool (thường tên: "RemoteEvent", "FishingEvent", "BiteEvent")
+    local possibleEvents = {"RemoteEvent", "FishingEvent", "BiteEvent", "CatchEvent", "Event"}
+    for _, eventName in ipairs(possibleEvents) do
+        local event = rod:FindFirstChild(eventName)
+        if event then
+            return event
         end
     end
-end)
-
--- ==================== LOGIC AUTO FISH ====================
-local function fireRemote(remote, ...)
-    if not remote then return end
-    if remote:IsA("RemoteEvent") then
-        remote:FireServer(...)
-    elseif remote:IsA("RemoteFunction") then
-        remote:InvokeServer(...)
-    end
+    return nil
 end
 
--- Hàm bắt cá ngay lập tức
-local function instantCatch()
-    if fishRemote then
-        -- Thử bắn các tham số phổ biến (true, 1, "success", "catch")
-        fireRemote(fishRemote, true)
-        wait(0.05)
-        fireRemote(fishRemote, 1)
-        wait(0.05)
-        fireRemote(fishRemote, "success")
-        wait(0.05)
-        fireRemote(fishRemote)
-    else
-        statusLabel.Text = "Không tìm thấy remote câu cá!"
-    end
-end
-
--- Kiểm tra cá cắn câu qua GUI hoặc vị trí bobber
-local function isFishBiting()
-    -- Cách 1: Tìm trong PlayerGui các chữ "Bite", "!", "Cắn", "!"
-    local playerGui = player:WaitForChild("PlayerGui")
-    for _, gui in ipairs(playerGui:GetDescendants()) do
-        if gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("ImageLabel") then
-            local text = ""
-            if gui:IsA("TextLabel") or gui:IsA("TextButton") then
-                text = gui.Text:lower()
+-- Hàm kiểm tra nếu có rương trong inventory (sau khi câu xong)
+local function checkAndOpenChest()
+    if not autoChestEnabled then return end
+    wait(1) -- đợi item rơi vào túi
+    for _, item in ipairs(LocalPlayer.Backpack:GetChildren()) do
+        if item.Name:lower():find("chest") or item.Name:lower():find("treasure") then
+            -- Tự động mở rương: thường là dùng tool "Open" hoặc click vào item
+            -- Cách đơn giản: trang bị item rồi kích hoạt
+            local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid:EquipTool(item)
+                wait(0.2)
+                -- Giả sử có RemoteEvent "OpenChest" hoặc tương tự trong tool
+                local openEvent = item:FindFirstChild("RemoteEvent") or item:FindFirstChild("OpenEvent")
+                if openEvent then
+                    openEvent:FireServer()
+                else
+                    -- Fallback: click chuột phải (mở rương bằng chuột phải thường)
+                    VIM:SendMouseButtonEvent(0, 0, 1, true, game, 1)
+                    wait(0.1)
+                    VIM:SendMouseButtonEvent(0, 0, 1, false, game, 1)
+                end
             end
-            if text:find("!") or text:find("bite") or text:find("cắn") then
-                return true
+            break
+        end
+    end
+end
+
+-- Hàm chính xử lý khi cá cắn
+local function onBite()
+    if not autoFishEnabled then return end
+    -- Giật cần ngay
+    simulateClick()
+    -- Đợi kéo cá lên, rồi kiểm tra chest
+    spawn(checkAndOpenChest)
+end
+
+-- Thiết lập kết nối khi có cần câu
+local function setupAutoFish()
+    local event = connectToBiteSignal()
+    if event then
+        if biteSignal then
+            biteSignal:Disconnect()
+        end
+        biteSignal = event.OnClientEvent:Connect(function(action)
+            -- action có thể là chuỗi "Bite", "Catch", hoặc số
+            if action == "Bite" or action == "Catch" or action == 1 then
+                onBite()
             end
-        end
-    end
-    -- Cách 2: Kiểm tra bobber chìm (tùy chỉnh tên và ngưỡng Y)
-    local bobber = workspace:FindFirstChild("Bobber") or workspace:FindFirstChild("FishingBobber") or workspace:FindFirstChild("BobberModel")
-    if bobber then
-        local waterLevel = 0 -- Thay đổi theo map
-        if bobber.Position.Y < waterLevel + 0.5 then
-            return true
-        end
-    end
-    return false
-end
-
--- Vòng lặp auto fish
-runService.Heartbeat:Connect(function()
-    if not SETTINGS.autoFish then return end
-    local character = player.Character
-    if not character then return end
-    local tool = character:FindFirstChildOfClass("Tool")
-    if tool and (tool.Name:lower():find("rod") or tool.Name:lower():find("cần")) then
-        if isFishBiting() then
-            instantCatch()
-            wait(0.3)
-        end
-    end
-end)
-
--- ==================== LOGIC AUTO CHEST ====================
-local function instantCatchChest()
-    if chestRemote then
-        fireRemote(chestRemote, true)
-        wait(0.05)
-        fireRemote(chestRemote, 1)
-        wait(0.05)
-        fireRemote(chestRemote)
+        end)
     else
-        statusLabel.Text = "Không tìm thấy remote chest!"
+        -- Fallback: dùng animation detection (nếu không tìm thấy remote)
+        warn("Không tìm thấy remote bite, dùng fallback animation detection")
+        RunService.RenderStepped:Connect(function()
+            if not autoFishEnabled then return end
+            if LocalPlayer.Character then
+                local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                        if track.Animation and track.Animation.Name:lower():find("bite") then
+                            onBite()
+                            break
+                        end
+                    end
+                end
+            end
+        end)
     end
 end
 
-runService.Heartbeat:Connect(function()
-    if not SETTINGS.autoChest then return end
-    local character = player.Character
-    if not character then return end
-    local tool = character:FindFirstChildOfClass("Tool")
-    if tool and (tool.Name:lower():find("rod") or tool.Name:lower():find("cần")) then
-        -- Có thể kiểm tra riêng biệt nếu rương cắn, nhưng tạm thời dùng chung isFishBiting
-        if isFishBiting() then
-            instantCatchChest()
-            wait(0.3)
+-- Tạo UI đơn giản (dùng Drawing hoặc ScreenGui tự tạo)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AutoFishGUI"
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 200, 0, 120)
+Frame.Position = UDim2.new(0.5, -100, 0.1, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundTransparency = 1
+Title.Text = "Auto Fish - ID: 14920583102"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 14
+Title.Parent = Frame
+
+local ToggleFish = Instance.new("TextButton")
+ToggleFish.Size = UDim2.new(0.9, 0, 0, 30)
+ToggleFish.Position = UDim2.new(0.05, 0, 0.3, 0)
+ToggleFish.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+ToggleFish.Text = "Auto Fish: OFF"
+ToggleFish.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleFish.Font = Enum.Font.SourceSansBold
+ToggleFish.TextSize = 12
+ToggleFish.Parent = Frame
+
+local ToggleChest = Instance.new("TextButton")
+ToggleChest.Size = UDim2.new(0.9, 0, 0, 30)
+ToggleChest.Position = UDim2.new(0.05, 0, 0.65, 0)
+ToggleChest.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+ToggleChest.Text = "Auto Chest: ON"
+ToggleChest.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleChest.Font = Enum.Font.SourceSansBold
+ToggleChest.TextSize = 12
+ToggleChest.Parent = Frame
+
+-- Xử lý nút bấm
+ToggleFish.MouseButton1Click:Connect(function()
+    autoFishEnabled = not autoFishEnabled
+    ToggleFish.Text = autoFishEnabled and "Auto Fish: ON" or "Auto Fish: OFF"
+    if autoFishEnabled then
+        setupAutoFish()
+    end
+end)
+
+ToggleChest.MouseButton1Click:Connect(function()
+    autoChestEnabled = not autoChestEnabled
+    ToggleChest.Text = autoChestEnabled and "Auto Chest: ON" or "Auto Chest: OFF"
+end)
+
+-- Khởi tạo ban đầu
+findFishingRod()
+
+-- Khi nhặt cần câu mới, cập nhật
+LocalPlayer.Backpack.ChildAdded:Connect(function(child)
+    if child:IsA("Tool") and (child.Name:lower():find("rod") or child.Name:lower():find("fishing")) then
+        fishingRod = child
+        if autoFishEnabled then
+            setupAutoFish()
         end
     end
 end)
 
--- ==================== XỬ LÝ NÚT BẬT/TẮT ====================
-local function updateButtonVisual(button, enabled)
-    button.BackgroundColor3 = enabled and Color3.fromRGB(30, 120, 30) or Color3.fromRGB(120, 30, 30)
-end
-
-autoFishButton.MouseButton1Click:Connect(function()
-    SETTINGS.autoFish = not SETTINGS.autoFish
-    autoFishButton.Text = "Auto Fish: " .. (SETTINGS.autoFish and "ON" or "OFF")
-    updateButtonVisual(autoFishButton, SETTINGS.autoFish)
-    statusLabel.Text = SETTINGS.autoFish and "Auto Fish đã bật" or "Auto Fish đã tắt"
+LocalPlayer.CharacterAdded:Connect(function()
+    if autoFishEnabled then
+        setupAutoFish()
+    end
 end)
 
-autoChestButton.MouseButton1Click:Connect(function()
-    SETTINGS.autoChest = not SETTINGS.autoChest
-    autoChestButton.Text = "Auto Catch Chest: " .. (SETTINGS.autoChest and "ON" or "OFF")
-    updateButtonVisual(autoChestButton, SETTINGS.autoChest)
-    statusLabel.Text = SETTINGS.autoChest and "Auto Chest đã bật" or "Auto Chest đã tắt"
-end)
-
--- ==================== IN THÔNG TIN DEBUG ====================
-print("=== longhihiv2 Script Loaded ===")
-print("Fish Remote:", fishRemote and fishRemote.Name or "Not Found")
-print("Chest Remote:", chestRemote and chestRemote.Name or "Not Found")
-print("Hãy bật Auto Fish và cầm cần câu để sử dụng.")
+print("Script Auto Fish đã sẵn sàng. Bấm nút để bật.")
