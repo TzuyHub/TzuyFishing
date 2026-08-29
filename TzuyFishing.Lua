@@ -1,4 +1,4 @@
--- Blox Fruits Auto Fishing Hub - TzuyFishing (Fixed Video Logic)
+-- Blox Fruits Auto Fishing & Priority Chest Hub - TzuyFishing
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -9,8 +9,8 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- Cấu hình trạng thái tính năng
 local _GConfig = {
-    AutoFish = false,    -- Tự động câu cá hoàn hảo theo video
-    CatchChest = false,  -- Tự động nhặt rương
+    AutoFish = false,    -- Tự động câu cá
+    CatchChest = false,  -- Ưu tiên tự động nhặt rương khi thấy
 }
 
 -- Xóa Menu cũ nếu có để tránh trùng lặp
@@ -191,7 +191,17 @@ end
 minimizeBtn.MouseButton1Click:Connect(toggleMenuState)
 floatingToggleBtn.MouseButton1Click:Connect(toggleMenuState)
 
--- Vòng lặp Nhặt Rương
+-- Hàm kiểm tra xem có rương xung quanh hay không
+local function getNearestChest(hrp)
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj.Name:find("Chest") and obj:FindFirstChild("HumanoidRootPart") then
+            return obj.HumanoidRootPart
+        end
+    end
+    return nil
+end
+
+-- Vòng lặp chính xử lý Nhặt Rương Ưu Tiên
 RunService.Stepped:Connect(function()
     local character = player.Character
     if not character then return end
@@ -210,16 +220,22 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Vòng lặp Tự Động Câu Cá chuẩn khớp trạng thái game
+-- Vòng lặp Câu Cá (Sẽ tự nhường chỗ / hoãn lại 1 nhịp nếu phát hiện có rương xuất hiện để hốt rương trước)
 task.spawn(function()
     while true do
-        task.wait(0.5)
+        task.wait(1)
         if _GConfig.AutoFish then
             pcall(function()
                 local character = player.Character
                 if not character then return end
+                local hrp = character:FindFirstChild("HumanoidRootPart")
                 local humanoid = character:FindFirstChildOfClass("Humanoid")
-                if not humanoid then return end
+                if not hrp or not humanoid then return end
+
+                -- Nếu đang bật nhặt rương VÀ phát hiện có rương ở gần, tạm dừng câu để hốt rương trước
+                if _GConfig.CatchChest and getNearestChest(hrp) then
+                    return -- Nhường chỗ cho vòng lặp nhặt rương xử lý xong xuôi rồi mới câu tiếp
+                end
 
                 -- Tự động lấy cần câu trong balo nếu chưa cầm
                 local tool = character:FindFirstChildOfClass("Tool")
@@ -236,25 +252,9 @@ task.spawn(function()
                     end
                 end
 
-                -- Nếu đang cầm cần, kích hoạt liên tục để thực hiện quăng và giật cá hoàn hảo
+                -- Nếu đang cầm cần thì kích hoạt thao tác câu bình thường
                 if tool and (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
                     tool:Activate()
-                    -- Kiểm tra và tương tác trực tiếp với các sự kiện hoặc minigame UI nếu có trên màn hình
-                    for _, gui in ipairs(playerGui:GetChildren()) do
-                        if gui:IsA("ScreenGui") then
-                            for _, desc in ipairs(gui:GetDescendants()) do
-                                if desc:IsA("TextButton") and (desc.Text:lower():find("reel") or desc.Text:lower():find("catch") or desc.Text:lower():find("fish")) then
-                                    local vim = game:GetService("VirtualInputManager")
-                                    -- Kích hoạt giả lập nhấn cực kỳ nhẹ vào nút trong game để qua minigame hoàn hảo
-                                    if vim then
-                                        vim:SendMouseButtonEvent(desc.AbsolutePosition.X + 10, desc.AbsolutePosition.Y + 10, 0, true, game, 0)
-                                        task.wait(0.05)
-                                        vim:SendMouseButtonEvent(desc.AbsolutePosition.X + 10, desc.AbsolutePosition.Y + 10, 0, false, game, 0)
-                                    end
-                                end
-                            end
-                        end
-                    end
                 end
             end)
         end
