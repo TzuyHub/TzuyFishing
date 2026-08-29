@@ -1,10 +1,9 @@
--- Blox Fruits Hub - TzuyFishing (Auto Fish ưu tiên Chest + Catch Chest)
+-- Blox Fruits Hub - TzuyFishing (Always Run - Liên Tục Khi Bật)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -170,11 +169,11 @@ local function updateFishButtonVisual(state)
     if state then
         btnFish.BackgroundColor3 = Color3.fromRGB(0, 160, 90)
         btnFish.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btnFish.Text = "  Tự Động Câu Cá (Auto Fish): [ON]"
+        btnFish.Text = "  Auto Fish + Đi Biển: [ON]"
     else
         btnFish.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
         btnFish.TextColor3 = Color3.fromRGB(200, 200, 200)
-        btnFish.Text = "  Tự Động Câu Cá (Auto Fish): [OFF]"
+        btnFish.Text = "  Auto Fish + Đi Biển: [OFF]"
     end
 end
 
@@ -240,9 +239,21 @@ end
 minimizeBtn.MouseButton1Click:Connect(toggleMenuState)
 floatingToggleBtn.MouseButton1Click:Connect(toggleMenuState)
 
--- === AUTO FISHING (ưu tiên chest nếu bật CatchChest) ===
-local isFishing = false
-local castTime = 0
+-- === TỰ ĐỘNG TRANG BỊ CẦN CÂU NẾU CÓ ===
+local function equipFishingRod()
+    local character = player.Character
+    if not character then return end
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and (tool.Name:lower():find("fishing") or tool.Name:lower():find("rod")) then
+                character.Humanoid:EquipTool(tool)
+                return true
+            end
+        end
+    end
+    return false
+end
 
 local function hasFishingRod()
     local character = player.Character
@@ -253,6 +264,31 @@ local function hasFishingRod()
     end
     return false
 end
+
+-- === TÌM NƯỚC GẦN NHẤT ===
+local function findNearestWaterPosition()
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+    local rootPos = character.HumanoidRootPart.Position
+    local nearestPos = nil
+    local nearestDist = math.huge
+
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and (obj.Material == Enum.Material.Water or obj.Name:lower():find("water") or obj.Name:lower():find("sea") or obj.Name:lower():find("ocean")) then
+            local pos = obj.Position
+            local dist = (pos - rootPos).Magnitude
+            if dist < nearestDist then
+                nearestDist = dist
+                nearestPos = pos
+            end
+        end
+    end
+    return nearestPos
+end
+
+-- === CÂU CÁ LIÊN TỤC ===
+local isFishing = false
+local castTime = 0
 
 local function castFishingRod()
     local character = player.Character
@@ -275,14 +311,12 @@ local function reelFishingRod()
     end
 end
 
--- Hàm kiểm tra chest gần đó (trong Workspace)
 local function checkForChest()
     local character = player.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
     local root = character.HumanoidRootPart
     for _, obj in ipairs(Workspace:GetChildren()) do
         if obj.Name:lower():find("chest") and obj:FindFirstChild("HumanoidRootPart") then
-            -- Kiểm tra khoảng cách < 50 studs (tùy chỉnh)
             local distance = (obj.HumanoidRootPart.Position - root.Position).Magnitude
             if distance < 50 then
                 return true
@@ -292,56 +326,81 @@ local function checkForChest()
     return false
 end
 
--- Vòng lặp Auto Fish chính
+-- === VÒNG LẶP CHÍNH LUÔN CHẠY KHI BẬT ===
 task.spawn(function()
     while true do
-        task.wait(0.2)
-        if not _GConfig.AutoFish then
+        task.wait(0.1) -- Tần suất kiểm tra nhanh
+        
+        if not _GConfig.AutoFish and not _GConfig.CatchChest then
             isFishing = false
             continue
         end
         
-        if not hasFishingRod() then
-            isFishing = false
-            continue
+        -- Nếu bật AutoFish hoặc CatchChest thì đảm bảo có cần câu
+        if _GConfig.AutoFish or _GConfig.CatchChest then
+            if not hasFishingRod() then
+                equipFishingRod()
+            end
         end
         
-        local character = player.Character
-        if not character or not character:FindFirstChild("HumanoidRootPart") then
-            isFishing = false
-            continue
-        end
-        
-        -- Nếu chưa câu, thực hiện cast
-        if not isFishing then
-            castFishingRod()
-            -- Chờ tối đa 5 giây để phát hiện chest hoặc cá cắn
-            local startTime = tick()
-            while tick() - startTime < 5 do
-                task.wait(0.1)
-                -- Nếu bật CatchChest và phát hiện chest -> reel ngay
-                if _GConfig.CatchChest and checkForChest() then
-                    reelFishingRod()
-                    break
+        -- Chỉ thực hiện câu cá khi bật AutoFish
+        if _GConfig.AutoFish then
+            local character = player.Character
+            if not character or not character:FindFirstChild("HumanoidRootPart") then
+                isFishing = false
+                continue
+            end
+            
+            -- Tự động di chuyển đến biển nếu xa
+            local waterPos = findNearestWaterPosition()
+            if waterPos then
+                local root = character.HumanoidRootPart
+                local distToWater = (waterPos - root.Position).Magnitude
+                if distToWater > 30 then
+                    root.CFrame = CFrame.new(waterPos + Vector3.new(0, 5, 0))
+                    task.wait(0.5)
                 end
-                -- Nếu đã reel (do nguyên nhân khác) thì thoát
-                if not isFishing then break end
             end
-            -- Nếu vẫn còn đang câu sau 5 giây, reel để tránh kẹt
-            if isFishing then
-                reelFishingRod()
-            end
-        else
-            -- Nếu đang câu nhưng quá 5 giây (an toàn)
-            if tick() - castTime > 5 then
-                reelFishingRod()
+            
+            -- Thực hiện câu cá
+            if not isFishing then
+                castFishingRod()
+                local startTime = tick()
+                -- Chờ tối đa 3 giây (đủ nhanh)
+                while tick() - startTime < 3 do
+                    task.wait(0.05)
+                    -- Nếu bật CatchChest và phát hiện chest -> reel ngay
+                    if _GConfig.CatchChest and checkForChest() then
+                        reelFishingRod()
+                        break
+                    end
+                    -- Nếu có cá cắn (có thể thêm logic phát hiện ở đây) -> reel ngay
+                    -- Hiện tại chưa có cách phát hiện chính xác, nên reel sau 1-2 giây ngẫu nhiên
+                end
+                -- Reel ngay nếu vẫn đang câu
+                if isFishing then
+                    reelFishingRod()
+                end
+                -- Nghỉ ngắn 0.2 giây trước lần cast tiếp theo
+                task.wait(0.2)
+            else
+                -- Nếu đang câu quá 5 giây (an toàn)
+                if tick() - castTime > 5 then
+                    reelFishingRod()
+                end
             end
         end
     end
 end)
 
+-- Tự động khôi phục khi nhân vật chết
+Players.LocalPlayer.CharacterAdded:Connect(function()
+    isFishing = false
+    showNotification("TzuyFishing Hub", "Nhân vật mới, tiếp tục tự động câu!")
+end)
+
 -- Thông báo khởi động
 task.spawn(function()
     task.wait(0.5)
-    showNotification("TzuyFishing Hub", "Tải cấu hình thành công!")
+    showNotification("TzuyFishing Hub", "Hệ thống sẵn sàng! Bật Auto Fish để chạy liên tục.")
 end)
