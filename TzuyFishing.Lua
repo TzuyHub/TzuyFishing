@@ -1,8 +1,7 @@
--- Blox Fruits Auto Fishing & Chest Hub - TzuyFishing (Top-Left Notification)
+-- Blox Fruits Auto Fishing & Chest Hub - TzuyFishing (Fixed Working Version)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
@@ -10,7 +9,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- Cấu hình trạng thái tính năng
 local _GConfig = {
-    AutoFish = false,    -- Tự động trang bị và thực hiện câu cá
+    AutoFish = false,    -- Tự động trang bị và văng cần câu
     CatchChest = false,  -- Tự động nhặt rương
 }
 
@@ -29,7 +28,7 @@ screenGui.Parent = playerGui
 local notifFrame = Instance.new("Frame")
 notifFrame.Name = "NotificationFrame"
 notifFrame.Size = UDim2.new(0, 260, 0, 50)
-notifFrame.Position = UDim2.new(0, -280, 0, 20) -- Ẩn sẵn bên trái màn hình
+notifFrame.Position = UDim2.new(0, -280, 0, 20)
 notifFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
 notifFrame.BorderSizePixel = 0
 notifFrame.Parent = screenGui
@@ -60,16 +59,13 @@ notifText.Font = Enum.Font.Gotham
 notifText.TextXAlignment = Enum.TextXAlignment.Left
 notifText.Parent = notifFrame
 
--- Hàm gọi thông báo xuất hiện ở góc trên bên trái
 local function showNotification(title, message)
     notifTitle.Text = title
     notifText.Text = message
     
-    -- Hiệu ứng trượt vào từ góc trái (X: 20px)
     local tweenIn = TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0, 20, 0, 20)})
     tweenIn:Play()
     
-    -- Sau 2.5 giây tự động trượt ẩn đi
     task.spawn(function()
         task.wait(2.5)
         local tweenOut = TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(0, -280, 0, 20)})
@@ -92,7 +88,6 @@ local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = mainFrame
 
--- Tiêu đề Menu
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, 0, 0, 40)
 titleLabel.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
@@ -107,7 +102,6 @@ local titleCorner = Instance.new("UICorner")
 titleCorner.CornerRadius = UDim.new(0, 8)
 titleCorner.Parent = titleLabel
 
--- Nút thu nhỏ (-)
 local minimizeBtn = Instance.new("TextButton")
 minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
 minimizeBtn.Position = UDim2.new(1, -35, 0, 5)
@@ -122,7 +116,6 @@ local minCorner = Instance.new("UICorner")
 minCorner.CornerRadius = UDim.new(0, 6)
 minCorner.Parent = minimizeBtn
 
--- Hàm tạo Toggle Button
 local function createToggle(name, posY, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.92, 0, 0, 40)
@@ -155,7 +148,6 @@ local function createToggle(name, posY, callback)
     end)
 end
 
--- Tạo 2 nút tính năng
 createToggle("Tự Động Câu Cá (Auto Fish)", 50, function(state)
     _GConfig.AutoFish = state
     if state then
@@ -174,7 +166,6 @@ createToggle("Tự Động Nhặt Rương (Catch Chest)", 105, function(state)
     end
 end)
 
--- Nút nổi mở lại menu khi ẩn
 local floatingToggleBtn = Instance.new("TextButton")
 floatingToggleBtn.Size = UDim2.new(0, 100, 0, 32)
 floatingToggleBtn.Position = UDim2.new(0, 15, 0, 15)
@@ -219,18 +210,18 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Vòng lặp Tự Động Câu Cá
+-- Vòng lặp Tự Động Câu Cá (Dùng lệnh Activate chuẩn của Tool Roblox để văng cần)
 task.spawn(function()
     while true do
-        task.wait(1)
+        task.wait(1.5)
         if _GConfig.AutoFish then
             pcall(function()
                 local character = player.Character
                 if not character then return end
                 local humanoid = character:FindFirstChildOfClass("Humanoid")
-                local hrp = character:FindFirstChild("HumanoidRootPart")
-                if not humanoid or not hrp then return end
+                if not humanoid then return end
 
+                -- Kiểm tra xem nhân vật đã cầm cần câu trên tay chưa
                 local tool = character:FindFirstChildOfClass("Tool")
                 if not tool or not (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
                     local backpack = player:FindFirstChildOfClass("Backpack")
@@ -245,17 +236,15 @@ task.spawn(function()
                     end
                 end
 
+                -- Nếu đã cầm cần câu, kích hoạt thao tác thả/văng cần
                 if tool and (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
-                    if tool:FindFirstChild("RemoteEvent") then
-                        tool.RemoteEvent:FireServer("Cast")
-                    end
+                    tool:Activate()
                 end
             end)
         end
     end
 end)
 
--- Thông báo khởi động thành công góc trên bên trái
 task.spawn(function()
     task.wait(0.5)
     showNotification("TzuyFishing Hub", "Đã tải thành công script!")
