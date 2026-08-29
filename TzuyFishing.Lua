@@ -11,12 +11,12 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- Cấu hình trạng thái tính năng
 local _GConfig = {
-    AutoFish = false,        -- Tự động trang bị cần và thả cần
-    PerfectCatch = false,    -- Tự động làm hoàn hảo mini-game giật cần
-    CatchChest = false,      -- Tự động nhặt rương
+    AutoFish = false,
+    PerfectCatch = false,
+    CatchChest = false,
 }
 
--- Xóa Menu cũ nếu có để tránh bị trùng lặp giao diện
+-- Xóa Menu cũ nếu có để tránh bị trùng lặp
 if playerGui:FindFirstChild("TzuyFishingGui") then
     playerGui.TzuyFishingGui:Destroy()
 end
@@ -27,7 +27,7 @@ screenGui.Name = "TzuyFishingGui"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
--- Tạo Frame chính của Menu (Thu gọn lại kích thước chuẩn để không tràn màn hình điện thoại)
+-- Tạo Frame chính của Menu
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 360, 0, 260)
@@ -72,7 +72,7 @@ local minCorner = Instance.new("UICorner")
 minCorner.CornerRadius = UDim.new(0, 6)
 minCorner.Parent = minimizeBtn
 
--- Hàm tạo Toggle Button cân đối, không bị tràn viền
+-- Hàm tạo Toggle Button
 local function createToggle(name, posY, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.92, 0, 0, 38)
@@ -105,8 +105,8 @@ local function createToggle(name, posY, callback)
     end)
 end
 
--- Thêm các tính năng vào Menu với khoảng cách (posY) chuẩn xác
-createToggle("Tự Động Câu Cá (Auto Equip & Cast)", 50, function(state)
+-- Thêm các tính năng vào Menu
+createToggle("Tự Động Câu Cá (Auto Cast)", 50, function(state)
     _GConfig.AutoFish = state
 end)
 
@@ -151,14 +151,14 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Vòng lặp xử lý chính siêu tốc
+-- Xử lý chức năng Tự động Nhặt Rương & Thả Cần an toàn
 RunService.Stepped:Connect(function()
     local character = player.Character
     if not character then return end
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return end
 
-    -- 1. Tự động Nhặt Rương (Catch Chest)
+    -- 1. Nhặt rương
     if _GConfig.CatchChest then
         pcall(function()
             for _, obj in ipairs(Workspace:GetChildren()) do
@@ -170,12 +170,10 @@ RunService.Stepped:Connect(function()
         end)
     end
 
-    -- 2. Tự động câu cá & câu hoàn hảo
-    if _GConfig.AutoFish or _GConfig.PerfectCatch then
+    -- 2. Tự động trang bị và thả cần câu
+    if _GConfig.AutoFish then
         pcall(function()
             local tool = character:FindFirstChildOfClass("Tool")
-            
-            -- Nếu chưa cầm cần câu, tự động tìm và trang bị từ balo
             if not tool or not (tool.Name:find("Fishing") or tool.Name:find("Rod")) then
                 local backpack = player:FindFirstChildOfClass("Backpack")
                 if backpack then
@@ -186,29 +184,29 @@ RunService.Stepped:Connect(function()
                     end
                 end
             end
+        end)
+    end
+end)
 
-            -- Đã cầm cần câu: Tự động thả cần
-            if tool and (tool.Name:find("Fishing") or tool.Name:find("Rod")) and _GConfig.AutoFish then
-                if tool:FindFirstChild("RemoteEvent") then
-                    tool.RemoteEvent:FireServer("Cast")
-                end
-            end
-
-            -- Can thiệp mini-game để giật cá hoàn hảo 1 phát ăn ngay
-            if _GConfig.PerfectCatch then
-                for _, gui in ipairs(playerGui:GetChildren()) do
-                    if gui:IsA("ScreenGui") and (gui.Name:find("Fish") or gui.Name:find("Mini") or gui.Name:find("UI") or gui.Name:find("Progress")) then
-                        for _, v in ipairs(gui:GetDescendants()) do
-                            if v:IsA("TextButton") or v:IsA("ImageButton") or v.Name:find("Button") then
-                                v.Position = UDim2.new(0.5, 0, 0.5, 0)
-                            end
-                            if v:IsA("Frame") and (v.Name:find("Bar") or v.Name:find("Progress") or v.Name:find("Fill")) then
-                                v.Size = UDim2.new(1, 0, v.Size.Y.Scale, v.Size.Y.Offset)
-                            end
+-- 3. Xử lý tối ưu riêng cho nút "Câu Hoàn Hảo" (Lắng nghe giao diện xuất hiện để tương tác)
+playerGui.ChildAdded:Connect(function(child)
+    if _GConfig.PerfectCatch and child:IsA("ScreenGui") then
+        task.spawn(function()
+            task.wait(0.1) -- Đợi giao diện load xong
+            pcall(function()
+                for _, v in ipairs(child:GetDescendants()) do
+                    if v:IsA("TextButton") or v:IsA("ImageButton") then
+                        -- Tự động bấm vào nút giật/hoàn thành mini-game
+                        if v.Name:find("Button") or v.Name:find("Reel") or v.Name:find("Catch") then
+                            -- Giả lập cú click chuột trực tiếp
+                            local vim = game:GetService("VirtualInputManager")
+                            vim:SendMouseButtonEvent(v.AbsolutePosition.X + 10, v.AbsolutePosition.Y + 10, 0, true, game, 1)
+                            task.wait(0.05)
+                            vim:SendMouseButtonEvent(v.AbsolutePosition.X + 10, v.AbsolutePosition.Y + 10, 0, false, game, 1)
                         end
                     end
                 end
-            end
+            end)
         end)
     end
 end)
