@@ -1,4 +1,4 @@
--- Blox Fruits Hub - TzuyFishing (Always Run - Liên Tục Khi Bật)
+-- Blox Fruits Hub - TzuyFishing (Không Đi Biển, Chạy Liên Tục Khi Bật)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -169,11 +169,11 @@ local function updateFishButtonVisual(state)
     if state then
         btnFish.BackgroundColor3 = Color3.fromRGB(0, 160, 90)
         btnFish.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btnFish.Text = "  Auto Fish + Đi Biển: [ON]"
+        btnFish.Text = "  Auto Fish: [ON]"
     else
         btnFish.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
         btnFish.TextColor3 = Color3.fromRGB(200, 200, 200)
-        btnFish.Text = "  Auto Fish + Đi Biển: [OFF]"
+        btnFish.Text = "  Auto Fish: [OFF]"
     end
 end
 
@@ -265,27 +265,6 @@ local function hasFishingRod()
     return false
 end
 
--- === TÌM NƯỚC GẦN NHẤT ===
-local function findNearestWaterPosition()
-    local character = player.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
-    local rootPos = character.HumanoidRootPart.Position
-    local nearestPos = nil
-    local nearestDist = math.huge
-
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and (obj.Material == Enum.Material.Water or obj.Name:lower():find("water") or obj.Name:lower():find("sea") or obj.Name:lower():find("ocean")) then
-            local pos = obj.Position
-            local dist = (pos - rootPos).Magnitude
-            if dist < nearestDist then
-                nearestDist = dist
-                nearestPos = pos
-            end
-        end
-    end
-    return nearestPos
-end
-
 -- === CÂU CÁ LIÊN TỤC ===
 local isFishing = false
 local castTime = 0
@@ -329,7 +308,7 @@ end
 -- === VÒNG LẶP CHÍNH LUÔN CHẠY KHI BẬT ===
 task.spawn(function()
     while true do
-        task.wait(0.1) -- Tần suất kiểm tra nhanh
+        task.wait(0.1) -- Kiểm tra nhanh
         
         if not _GConfig.AutoFish and not _GConfig.CatchChest then
             isFishing = false
@@ -351,18 +330,7 @@ task.spawn(function()
                 continue
             end
             
-            -- Tự động di chuyển đến biển nếu xa
-            local waterPos = findNearestWaterPosition()
-            if waterPos then
-                local root = character.HumanoidRootPart
-                local distToWater = (waterPos - root.Position).Magnitude
-                if distToWater > 30 then
-                    root.CFrame = CFrame.new(waterPos + Vector3.new(0, 5, 0))
-                    task.wait(0.5)
-                end
-            end
-            
-            -- Thực hiện câu cá
+            -- Thực hiện câu cá ngay tại vị trí hiện tại
             if not isFishing then
                 castFishingRod()
                 local startTime = tick()
@@ -374,8 +342,6 @@ task.spawn(function()
                         reelFishingRod()
                         break
                     end
-                    -- Nếu có cá cắn (có thể thêm logic phát hiện ở đây) -> reel ngay
-                    -- Hiện tại chưa có cách phát hiện chính xác, nên reel sau 1-2 giây ngẫu nhiên
                 end
                 -- Reel ngay nếu vẫn đang câu
                 if isFishing then
